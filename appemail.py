@@ -422,3 +422,6 @@ if "resultados" in st.session_state and st.session_state.resultados:
                 st.error(mensaje)
 else:
     st.info("Realiza primero una búsqueda de boletines para poder enviar el resumen por email.")
+
+
+st.info("Desarrollado por JCastro / ©2025")
