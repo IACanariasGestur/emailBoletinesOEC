@@ -22,7 +22,6 @@ CLAVE_APP = "tvru npfu kmov xngk"
 
 # ----------- FUNCIONES AUXILIARES -----------
 
-# Intentar poner el locale en español
 try:
     locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')
 except:
@@ -115,9 +114,7 @@ def generar_html_resumen(documentos):
     html += "</ul>"
     return html
 
-# ----------- FUNCIONES DE OBTENCIÓN DE BOLETINES -----------
-
-def obtener_documentos(hoy, tz_madrid, keywords_normalizadas):
+def obtener_documentos(hoy, tz_madrid, keywords_normalizadas, exclude_keywords_normalizadas):
     rss_url = 'https://www.boe.es/rss/boe.php'
     feed = feedparser.parse(rss_url)
     documentos = []
@@ -137,6 +134,7 @@ def obtener_documentos(hoy, tz_madrid, keywords_normalizadas):
         if (
             fecha_pub == hoy and
             any(k in texto for k in keywords_normalizadas) and
+            not any(x in texto for x in exclude_keywords_normalizadas) and
             not any(c in descripcion for c in comunidades_excluir)
         ):
             documentos.append({
@@ -148,7 +146,7 @@ def obtener_documentos(hoy, tz_madrid, keywords_normalizadas):
             })
     return documentos
 
-def obtener_documentos_boc_pdf(hoy_canarias, anio_actual, keywords_normalizadas, tz_canarias):
+def obtener_documentos_boc_pdf(hoy_canarias, anio_actual, keywords_normalizadas, exclude_keywords_normalizadas, tz_canarias):
     documentos = []
     for offset in [0]:
         fecha_prueba = hoy_canarias + timedelta(days=offset)
@@ -168,7 +166,8 @@ def obtener_documentos_boc_pdf(hoy_canarias, anio_actual, keywords_normalizadas,
                 if len(b[4].strip()) >= 30
             ]
             for texto in bloques:
-                if any(kw in normalizar(texto) for kw in keywords_normalizadas):
+                texto_norm = normalizar(texto)
+                if any(kw in texto_norm for kw in keywords_normalizadas) and not any(ex in texto_norm for ex in exclude_keywords_normalizadas):
                     documentos.append({
                         "boletin": "BOC",
                         "titulo": " ".join(texto.split()[:200]).upper(),
@@ -181,7 +180,7 @@ def obtener_documentos_boc_pdf(hoy_canarias, anio_actual, keywords_normalizadas,
             continue
     return documentos
 
-def obtener_documentos_bop_generico(nombre_bop, url_funcion, max_paginas, hoy_canarias, keywords_normalizadas):
+def obtener_documentos_bop_generico(nombre_bop, url_funcion, max_paginas, hoy_canarias, keywords_normalizadas, exclude_keywords_normalizadas):
     documentos = []
     session = requests.Session()
     headers = {
@@ -203,7 +202,11 @@ def obtener_documentos_bop_generico(nombre_bop, url_funcion, max_paginas, hoy_ca
             for texto in bloques:
                 if "....." in texto:
                     texto = texto.split(".....")[0].strip()
-                if any(kw in normalizar(texto) for kw in keywords_normalizadas):
+                texto_norm = normalizar(texto)
+                if (
+                    any(kw in texto_norm for kw in keywords_normalizadas)
+                    and not any(ex in texto_norm for ex in exclude_keywords_normalizadas)
+                ):
                     documentos.append({
                         "boletin": nombre_bop,
                         "titulo": texto.upper(),
@@ -217,7 +220,7 @@ def obtener_documentos_bop_generico(nombre_bop, url_funcion, max_paginas, hoy_ca
             continue
     return documentos
 
-def obtener_documentos_bop_lp(hoy_canarias, keywords_normalizadas):
+def obtener_documentos_bop_lp(hoy_canarias, keywords_normalizadas, exclude_keywords_normalizadas):
     documentos = []
     for i in range(5):
         fecha = hoy_canarias + timedelta(days=i)
@@ -239,7 +242,10 @@ def obtener_documentos_bop_lp(hoy_canarias, keywords_normalizadas):
                 bloque = bloque.strip()
                 if len(bloque) >= 30:
                     texto_normalizado = normalizar(bloque)
-                    if any(re.search(rf"\b{re.escape(kw)}\b", texto_normalizado) for kw in keywords_normalizadas):
+                    if (
+                        any(re.search(rf"\b{re.escape(kw)}\b", texto_normalizado) for kw in keywords_normalizadas)
+                        and not any(ex in texto_normalizado for ex in exclude_keywords_normalizadas)
+                    ):
                         documentos.append({
                             "boletin": "BOP LP",
                             "titulo": re.split(r"\.{5,}", bloque)[0].strip()[:200].upper(),
@@ -254,10 +260,10 @@ def obtener_documentos_bop_lp(hoy_canarias, keywords_normalizadas):
             continue
     return documentos
 
-def obtener_documentos_bop_sctf(hoy_canarias, keywords_normalizadas):
+def obtener_documentos_bop_sctf(hoy_canarias, keywords_normalizadas, exclude_keywords_normalizadas):
     def url_generator(fecha):
         return f"https://www.bopsantacruzdetenerife.es/boletines/{fecha.strftime('%Y/%-d-%-m-%y')}/{fecha.strftime('%-d-%-m-%y')}.pdf"
-    return obtener_documentos_bop_generico("BOP SCTF", url_generator, 4, hoy_canarias, keywords_normalizadas)
+    return obtener_documentos_bop_generico("BOP SCTF", url_generator, 4, hoy_canarias, keywords_normalizadas, exclude_keywords_normalizadas)
 
 # ----------- ENVÍO DE EMAIL -----------
 
@@ -295,8 +301,13 @@ default_keywords = [
     "vehículo",
 ]
 
+default_exclude_keywords = ["empleo", "volcán"]
+
 if "keywords" not in st.session_state:
     st.session_state.keywords = default_keywords.copy()
+
+if "exclude_keywords" not in st.session_state:
+    st.session_state.exclude_keywords = default_exclude_keywords.copy()
 
 if "destinatarios" not in st.session_state:
     st.session_state.destinatarios = ["srodriguez@oficinasenergia.es", "mhenriquez@oficinasenergia.es", "aherrera@oficinasverdes.es"]
@@ -326,9 +337,36 @@ with cols[1]:
             st.session_state.keywords.remove(kw_to_remove)
             st.info(f"Palabra clave '{kw_to_remove}' eliminada.")
 
-# Mostrar todas las palabras clave actuales
 st.write("**Palabras clave activas:**")
 st.write(", ".join(st.session_state.keywords))
+
+# ----------- SECCIÓN DE PALABRAS A EXCLUIR -----------
+
+st.subheader("🚫 Palabras clave para EXCLUIR anuncios")
+st.caption("Los anuncios que contengan alguna de estas palabras serán ignorados.")
+
+cols_ex = st.columns([2, 1])
+
+with cols_ex[0]:
+    new_exclude = st.text_input("Añadir nueva palabra a excluir", "")
+    if st.button("Añadir palabra a excluir"):
+        if new_exclude and new_exclude not in st.session_state.exclude_keywords:
+            st.session_state.exclude_keywords.append(new_exclude)
+            st.success(f"Palabra '{new_exclude}' añadida a exclusiones.")
+        elif not new_exclude:
+            st.warning("Introduce un texto para añadir.")
+        else:
+            st.warning("Esa palabra ya está en la lista de exclusiones.")
+
+with cols_ex[1]:
+    ex_to_remove = st.selectbox("Eliminar palabra de exclusión", options=[""] + st.session_state.exclude_keywords)
+    if st.button("Eliminar palabra excluida"):
+        if ex_to_remove and ex_to_remove in st.session_state.exclude_keywords:
+            st.session_state.exclude_keywords.remove(ex_to_remove)
+            st.info(f"Palabra '{ex_to_remove}' eliminada de exclusiones.")
+
+st.write("**Palabras clave excluidas activas:**")
+st.write(", ".join(st.session_state.exclude_keywords))
 
 # ----------- SECCIÓN DE DESTINATARIOS -----------
 
@@ -372,10 +410,13 @@ st.header("🔎 BUSCAR ANUNCIOS")
 if st.button("Buscar boletines oficiales"):
     with st.spinner("Buscando y analizando boletines... esto puede tardar unos segundos ⏳"):
         keywords_normalizadas = [normalizar(kw) for kw in st.session_state.keywords]
-        docs_boe = obtener_documentos(hoy, tz_madrid, keywords_normalizadas)
-        docs_boc = obtener_documentos_boc_pdf(hoy_canarias, anio_actual, keywords_normalizadas, tz_canarias)
-        docs_bop_lp = obtener_documentos_bop_lp(hoy_canarias, keywords_normalizadas)
-        docs_bop_sctf = obtener_documentos_bop_sctf(hoy_canarias, keywords_normalizadas)
+        exclude_keywords_normalizadas = [normalizar(kw) for kw in st.session_state.exclude_keywords]
+
+        docs_boe = obtener_documentos(hoy, tz_madrid, keywords_normalizadas, exclude_keywords_normalizadas)
+        docs_boc = obtener_documentos_boc_pdf(hoy_canarias, anio_actual, keywords_normalizadas, exclude_keywords_normalizadas, tz_canarias)
+        docs_bop_lp = obtener_documentos_bop_lp(hoy_canarias, keywords_normalizadas, exclude_keywords_normalizadas)
+        docs_bop_sctf = obtener_documentos_bop_sctf(hoy_canarias, keywords_normalizadas, exclude_keywords_normalizadas)
+
         documentos = docs_boe + docs_boc + docs_bop_lp + docs_bop_sctf
         st.session_state.resultados = documentos
 
@@ -422,6 +463,5 @@ if "resultados" in st.session_state and st.session_state.resultados:
                 st.error(mensaje)
 else:
     st.info("Realiza primero una búsqueda de boletines para poder enviar el resumen por email.")
-
 
 st.info("Desarrollado por JCastro / ©2025")
