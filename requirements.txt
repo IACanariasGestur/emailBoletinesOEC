@@ -1,0 +1,7 @@
+streamlit
+feedparser
+python-dateutil
+pytz
+requests
+beautifulsoup4
+pymupdf
