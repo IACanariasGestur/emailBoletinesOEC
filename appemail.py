@@ -279,9 +279,9 @@ def enviar_email_resumen(documentos, remitente, clave_app, destinatarios, cuerpo
 
 # ----------- STREAMLIT APP -----------
 
-st.set_page_config(page_title="Newsletter boletines", layout="wide")
+st.set_page_config(page_title="Newsletter boletines/OEC", layout="wide")
 
-st.title("🗄️ BÚSQUEDA Y ENVÍO DE ANUNCIOS EN BOLETINES OFICIALES")
+st.title("🗄️ ANUNCIOS EN BOLETINES OFICIALES")
 st.info("Busca legislación y anuncios relevantes en BOE, BOC, BOP Las Palmas y BOP SC de Tenerife.\n\n"
         "Puedes ajustar destinatarios y palabras clave antes de buscar.")
 
@@ -299,7 +299,7 @@ if "keywords" not in st.session_state:
     st.session_state.keywords = default_keywords.copy()
 
 if "destinatarios" not in st.session_state:
-    st.session_state.destinatarios = ["juridico@gesturcanarias.es"]
+    st.session_state.destinatarios = ["srodriguez@oficinasenergia.es", "mhenriquez@oficinasenergia.es", "aherrera@oficinasverdes.es"]
 
 # ----------- SECCIÓN DE PALABRAS CLAVE -----------
 
