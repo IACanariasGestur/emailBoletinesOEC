@@ -288,12 +288,11 @@ st.info("Busca legislación y anuncios relevantes en BOE, BOC, BOP Las Palmas y 
 # ====== PARÁMETROS Y ESTADO ======
 
 default_keywords = [
-    "Ley", "Ley Orgánica", "Decreto Ley", "Decreto Legislativo",
-    "Texto Refundido", "Reglamento", "Ordenación", "Urbanismo", "Decreto-Ley",
-    "Instrumento de planeamiento", "Planeamiento", "Plan Insular", "Plan General",
-    "Plan Especial", "Plan Parcial", "Plan Modernización", "Modificación puntual del P.G.O.",
-    "Proyecto de urbanización", "Ordenanza Provisional", "Ordenanza municipal de urbanización", "Urbanización",
-    "Edificación", "Catálogo de protección", "Evaluación Ambiental"
+    "Fondos Next Generation", "Ayudas", "Subvención", "Subvenciones",
+    "Extracto", "Energía", "Biodiversidad", "Economía circular", "Cambio climático",
+    "Life", "FEDER", "IDAE", "Plan de Recuperación, Transformación y Resiliencia",
+    "Instalación fotovoltaica", "sector náutico", "descarbonización", "eléctrico",
+    "vehículo",
 ]
 
 if "keywords" not in st.session_state:
