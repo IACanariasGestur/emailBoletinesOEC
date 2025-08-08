@@ -222,14 +222,17 @@ def obtener_documentos_bop_generico(nombre_bop, url_funcion, max_paginas, hoy_ca
 
 def obtener_documentos_bop_lp(hoy_canarias, keywords_normalizadas, exclude_keywords_normalizadas):
     def posibles_rutas(fecha):
+        # Genera rutas con día con cero y sin cero delante
         d_no0 = str(fecha.day)
         d_0 = f"{fecha.day:02d}"
         m = f"{fecha.month:02d}"
         a = str(fecha.year)[-2:]
-        for carpeta in (f"{d_0}-{m}-{a}", f"{d_no0}-{m}-{a}"):
+        carpetas = [f"{d_0}-{m}-{a}", f"{d_no0}-{m}-{a}"]
+        for carpeta in carpetas:
             yield f"https://www.boplaspalmas.net/boletines/{fecha.year}/{carpeta}/{carpeta}.pdf"
 
     def deshifenar(texto):
+        # Une palabras cortadas por guion + salto de línea
         return re.sub(r'(\w)-\s+(\w)', r'\1\2', texto)
 
     documentos = []
@@ -240,8 +243,10 @@ def obtener_documentos_bop_lp(hoy_canarias, keywords_normalizadas, exclude_keywo
         "Referer": "https://www.boplaspalmas.net/"
     })
 
+    # Probar hoy y los siguientes 4 días por si el boletín no está publicado
     for i in range(5):
         fecha = hoy_canarias + timedelta(days=i)
+
         for url_pdf in posibles_rutas(fecha):
             try:
                 res = session.get(url_pdf, timeout=15)
@@ -250,25 +255,37 @@ def obtener_documentos_bop_lp(hoy_canarias, keywords_normalizadas, exclude_keywo
                     continue
 
                 doc = fitz.open(stream=res.content, filetype="pdf")
+
+                # Leer hasta 8 páginas por si el sumario está más allá de la tercera
                 max_pages = min(8, len(doc))
-                texto = "\n".join(
-                    "\n".join(b[4] for b in doc[j].get_text("blocks") if b[4].strip())
-                    for j in range(max_pages)
-                )
+                texto_paginas = []
+                for j in range(max_pages):
+                    bloques = [b[4] for b in doc[j].get_text("blocks") if b[4].strip()]
+                    texto_paginas.append("\n".join(bloques))
+
+                texto = "\n".join(texto_paginas)
                 texto = deshifenar(texto)
 
+                # Dividir en bloques: patrón del sumario o fallback
                 lineas = [re.sub(r'\s+', ' ', ln.strip()) for ln in texto.splitlines() if ln.strip()]
-                bloques = extraer_bloques_sumario(lineas) or re.split(r'\n{2,}|(?=\b\d{6}\s)', "\n".join(lineas))
+                bloques = extraer_bloques_sumario(lineas)
+                if not bloques:
+                    bloques = re.split(r'\n{2,}|(?=\b\d{6}\s)', "\n".join(lineas))
 
                 for bloque in bloques:
                     bloque = bloque.strip()
                     if len(bloque) < 30:
                         continue
-                    tnorm = normalizar(bloque)
-                    hay_kw = any(re.search(rf"(?<!\w){re.escape(kw)}(?!\w)", tnorm) or (kw in tnorm)
-                                 for kw in keywords_normalizadas)
-                    excluido = any(ex in tnorm for ex in exclude_keywords_normalizadas)
-                    if hay_kw && not excluido:
+                    texto_normalizado = normalizar(bloque)
+
+                    # Coincidencia flexible: palabra exacta o inclusión simple
+                    hay_kw = any(
+                        re.search(rf"(?<!\w){re.escape(kw)}(?!\w)", texto_normalizado) or (kw in texto_normalizado)
+                        for kw in keywords_normalizadas
+                    )
+                    excluido = any(ex in texto_normalizado for ex in exclude_keywords_normalizadas)
+
+                    if hay_kw and not excluido:
                         documentos.append({
                             "boletin": "BOP LP",
                             "titulo": re.split(r"\.{5,}", bloque)[0].strip()[:200].upper(),
@@ -277,10 +294,13 @@ def obtener_documentos_bop_lp(hoy_canarias, keywords_normalizadas, exclude_keywo
                             "resumen": "(Detectado en sumario/texto libre)",
                             "contenido": bloque
                         })
+
                 if documentos:
-                    return documentos
+                    return documentos  # Salir en cuanto encontremos algo
+
             except Exception:
                 continue
+
     return documentos
 
 def obtener_documentos_bop_sctf(hoy_canarias, keywords_normalizadas, exclude_keywords_normalizadas):
