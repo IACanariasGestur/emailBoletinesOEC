@@ -17,8 +17,8 @@ from email.mime.text import MIMEText
 
 # ----------- CONFIGURACIÓN DE EMAIL -----------
 
-REMITENTE = "canariasgestur@gmail.com"
-CLAVE_APP = "tvru npfu kmov xngk"
+REMITENTE = st.secrets["SMTP_USER"]
+CLAVE_APP = st.secrets["SMTP_PASS"]
 
 # ----------- FUNCIONES AUXILIARES -----------
 
