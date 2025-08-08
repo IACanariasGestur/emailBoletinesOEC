@@ -224,7 +224,7 @@ def obtener_documentos_bop_lp(hoy_canarias, keywords_normalizadas, exclude_keywo
     documentos = []
     for i in range(5):
         fecha = hoy_canarias + timedelta(days=i)
-        d = str(fecha.day)
+        d = f"{fecha.day:02d}"
         m = f"{fecha.month:02d}"
         a = str(fecha.year)[-2:]
         carpeta = f"{d}-{m}-{a}"
