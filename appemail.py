@@ -65,7 +65,7 @@ def extraer_bloques_sumario(lineas):
         bloques.append(bloque_actual.strip())
     return bloques
 
-def calcular_numero_boc(fecha_objetivo, base_fecha=date(2025, 1, 2), base_numero=1):
+def calcular_numero_boc(fecha_objetivo, base_fecha=date(2025, 1, 2), base_numero=0):
     if fecha_objetivo < base_fecha:
         raise ValueError("Fecha anterior a la base.")
     actual = base_fecha
@@ -80,7 +80,7 @@ def calcular_numero_boc(fecha_objetivo, base_fecha=date(2025, 1, 2), base_numero
         return calcular_numero_boc(fecha_objetivo, base_fecha, base_numero)
     return numero_boc
 
-def calcular_fecha_desde_numero_boc(numero_objetivo, base_fecha=date(2025, 1, 2), base_numero=1):
+def calcular_fecha_desde_numero_boc(numero_objetivo, base_fecha=date(2025, 1, 2), base_numero=0):
     actual = base_fecha
     numero_actual = base_numero
     while numero_actual < numero_objetivo:
