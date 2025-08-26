@@ -344,7 +344,7 @@ default_keywords = [
     "vehículo",
 ]
 
-default_exclude_keywords = ["empleo", "volcán"]
+default_exclude_keywords = ["Empleo", "Volcán", "Confederación Hidrográfica"]
 
 if "keywords" not in st.session_state:
     st.session_state.keywords = default_keywords.copy()
